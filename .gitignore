@@ -1,218 +1,104 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
+import tkinter as tk
+from tkinter import ttk, messagebox
+import random
+import json
+import os
 
-# C extensions
-*.so
+DEFAULT_TASKS = [
+    {"name": "Прочитать статью по Python", "type": "учёба"},
+    {"name": "Сделать зарядку 15 минут", "type": "спорт"},
+    {"name": "Написать отчёт", "type": "работа"},
+    {"name": "Изучить новый модуль random", "type": "учёба"},
+    {"name": "Пробежка 2 км", "type": "спорт"},
+    {"name": "Созвониться с клиентом", "type": "работа"}
+]
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+FILENAME = "tasks_history.json"
 
-# PyInstaller
-#   Usually these files are written by a python script from a template
-#   before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+class RandomTaskGenerator:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Random Task Generator")
+        self.root.geometry("550x550")
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+        self.history = self.load_history()
+        self.tasks = DEFAULT_TASKS.copy()
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-.pytest_cache/
-cover/
+        self.create_widgets()
+        self.update_history_list()
 
-# Translations
-*.mo
-*.pot
+    def load_history(self):
+        if os.path.exists(FILENAME):
+            try:
+                with open(FILENAME, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                return []
+        return []
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+    def save_history(self):
+        with open(FILENAME, "w", encoding="utf-8") as f:
+            json.dump(self.history, f, ensure_ascii=False, indent=2)
 
-# Flask stuff:
-instance/
-.webassets-cache
+    def create_widgets(self):
+        self.label_task = tk.Label(self.root, text="Нажмите 'Сгенерировать'", font=("Arial", 14), wraplength=500)
+        self.label_task.pack(pady=20)
 
-# Scrapy stuff:
-.scrapy
+        btn_generate = tk.Button(self.root, text="Сгенерировать задачу", command=self.generate_task)
+        btn_generate.pack(pady=5)
 
-# Sphinx documentation
-docs/_build/
+        filter_frame = tk.Frame(self.root)
+        filter_frame.pack(pady=10)
+        tk.Label(filter_frame, text="Фильтр по типу:").pack(side=tk.LEFT)
+        self.filter_var = tk.StringVar(value="все")
+        types = ["все", "учёба", "спорт", "работа"]
+        self.filter_combo = ttk.Combobox(filter_frame, textvariable=self.filter_var, values=types, state="readonly")
+        self.filter_combo.pack(side=tk.LEFT, padx=5)
+        self.filter_combo.bind("<<ComboboxSelected>>", lambda e: self.update_history_list())
 
-# PyBuilder
-.pybuilder/
-target/
+        self.history_listbox = tk.Listbox(self.root, height=15)
+        self.history_listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-# Jupyter Notebook
-.ipynb_checkpoints
+        add_frame = tk.Frame(self.root)
+        add_frame.pack(pady=5, fill=tk.X, padx=10)
+        tk.Label(add_frame, text="Новая задача:").pack(side=tk.LEFT)
+        self.new_task_entry = tk.Entry(add_frame)
+        self.new_task_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        self.new_type_var = tk.StringVar(value="учёба")
+        type_menu = ttk.Combobox(add_frame, textvariable=self.new_type_var, values=["учёба", "спорт", "работа"], state="readonly", width=8)
+        type_menu.pack(side=tk.LEFT)
+        btn_add = tk.Button(add_frame, text="Добавить", command=self.add_task)
+        btn_add.pack(side=tk.LEFT, padx=5)
 
-# IPython
-profile_default/
-ipython_config.py
+    def generate_task(self):
+        if not self.tasks:
+            messagebox.showwarning("Нет задач", "Список задач пуст. Добавьте новые задачи.")
+            return
+        chosen = random.choice(self.tasks)
+        self.label_task.config(text=f"Текущая задача: {chosen['name']} (тип: {chosen['type']})")
+        self.history.append(f"{chosen['name']} ({chosen['type']})")
+        self.save_history()
+        self.update_history_list()
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+    def update_history_list(self):
+        self.history_listbox.delete(0, tk.END)
+        filter_type = self.filter_var.get()
+        for item in self.history:
+            if filter_type == "все":
+                self.history_listbox.insert(tk.END, item)
+            elif f"({filter_type})" in item:
+                self.history_listbox.insert(tk.END, item)
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-# Pipfile.lock
+    def add_task(self):
+        new_name = self.new_task_entry.get().strip()
+        if not new_name:
+            messagebox.showerror("Ошибка", "Название задачи не может быть пустым!")
+            return
+        self.tasks.append({"name": new_name, "type": self.new_type_var.get()})
+        self.new_task_entry.delete(0, tk.END)
+        messagebox.showinfo("Успех", f"Задача '{new_name}' добавлена!")
 
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-# uv.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-# poetry.lock
-# poetry.toml
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
-#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
-# pdm.lock
-# pdm.toml
-.pdm-python
-.pdm-build/
-
-# pixi
-#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
-# pixi.lock
-#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
-#   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# Redis
-*.rdb
-*.aof
-*.pid
-
-# RabbitMQ
-mnesia/
-rabbitmq/
-rabbitmq-data/
-
-# ActiveMQ
-activemq-data/
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.envrc
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#   JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#   and can be added to the global gitignore or merged into this file.  For a more nuclear
-#   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
-
-# Abstra
-#   Abstra is an AI-powered process automation framework.
-#   Ignore directories containing user credentials, local state, and settings.
-#   Learn more at https://abstra.io/docs
-.abstra/
-
-# Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
-# Temporary file for partial code execution
-tempCodeRunnerFile.py
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
-
-# Streamlit
-.streamlit/secrets.toml
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = RandomTaskGenerator(root)
+    root.mainloop()
