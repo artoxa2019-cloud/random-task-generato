@@ -1,104 +1,53 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-import random
-import json
-import os
+from tkinter import messagebox
 
-DEFAULT_TASKS = [
-    {"name": "Прочитать статью по Python", "type": "учёба"},
-    {"name": "Сделать зарядку 15 минут", "type": "спорт"},
-    {"name": "Написать отчёт", "type": "работа"},
-    {"name": "Изучить новый модуль random", "type": "учёба"},
-    {"name": "Пробежка 2 км", "type": "спорт"},
-    {"name": "Созвониться с клиентом", "type": "работа"}
-]
+def generate_table():
+    try:
+        n = int(entry.get())
+        if n <= 0:
+            raise ValueError
+    except ValueError:
+        messagebox.showerror("Ошибка", "Пожалуйста, введите положительное целое число.")
+        return
 
-FILENAME = "tasks_history.json"
+    # Очистка предыдущей таблицы
+    for widget in frame.winfo_children():
+        widget.destroy()
 
-class RandomTaskGenerator:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Random Task Generator")
-        self.root.geometry("550x550")
+    # Заголовки (верхняя строка)
+    for i in range(n + 1):
+        bg_color = 'lightgray' if i == 0 else 'white'
+        label = tk.Label(frame, text=i if i > 0 else '', width=5, height=2, relief='ridge', bg=bg_color)
+        label.grid(row=0, column=i, padx=1, pady=1)
 
-        self.history = self.load_history()
-        self.tasks = DEFAULT_TASKS.copy()
+    # Столбец слева и ячейки таблицы
+    for row in range(1, n + 1):
+        # Левый столбец (множители)
+        label = tk.Label(frame, text=row, width=5, height=2, relief='ridge', bg='lightgray')
+        label.grid(row=row, column=0, padx=1, pady=1)
 
-        self.create_widgets()
-        self.update_history_list()
+        for col in range(1, n + 1):
+            result = row * col
+            bg_color = 'white'
+            label = tk.Label(frame, text=result, width=5, height=2, relief='ridge', bg=bg_color)
+            label.grid(row=row, column=col, padx=1, pady=1)
 
-    def load_history(self):
-        if os.path.exists(FILENAME):
-            try:
-                with open(FILENAME, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except:
-                return []
-        return []
+# Создание окна
+root = tk.Tk()
+root.title("Таблица умножения")
 
-    def save_history(self):
-        with open(FILENAME, "w", encoding="utf-8") as f:
-            json.dump(self.history, f, ensure_ascii=False, indent=2)
+# Поле ввода и кнопка
+frame_input = tk.Frame(root)
+frame_input.pack(pady=10)
 
-    def create_widgets(self):
-        self.label_task = tk.Label(self.root, text="Нажмите 'Сгенерировать'", font=("Arial", 14), wraplength=500)
-        self.label_task.pack(pady=20)
+tk.Label(frame_input, text="Введите N:").pack(side='left')
+entry = tk.Entry(frame_input)
+entry.pack(side='left', padx=5)
 
-        btn_generate = tk.Button(self.root, text="Сгенерировать задачу", command=self.generate_task)
-        btn_generate.pack(pady=5)
+tk.Button(root, text="Построить таблицу", command=generate_table).pack(pady=5)
 
-        filter_frame = tk.Frame(self.root)
-        filter_frame.pack(pady=10)
-        tk.Label(filter_frame, text="Фильтр по типу:").pack(side=tk.LEFT)
-        self.filter_var = tk.StringVar(value="все")
-        types = ["все", "учёба", "спорт", "работа"]
-        self.filter_combo = ttk.Combobox(filter_frame, textvariable=self.filter_var, values=types, state="readonly")
-        self.filter_combo.pack(side=tk.LEFT, padx=5)
-        self.filter_combo.bind("<<ComboboxSelected>>", lambda e: self.update_history_list())
+# Рамка для таблицы
+frame = tk.Frame(root)
+frame.pack(padx=10, pady=10)
 
-        self.history_listbox = tk.Listbox(self.root, height=15)
-        self.history_listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-
-        add_frame = tk.Frame(self.root)
-        add_frame.pack(pady=5, fill=tk.X, padx=10)
-        tk.Label(add_frame, text="Новая задача:").pack(side=tk.LEFT)
-        self.new_task_entry = tk.Entry(add_frame)
-        self.new_task_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        self.new_type_var = tk.StringVar(value="учёба")
-        type_menu = ttk.Combobox(add_frame, textvariable=self.new_type_var, values=["учёба", "спорт", "работа"], state="readonly", width=8)
-        type_menu.pack(side=tk.LEFT)
-        btn_add = tk.Button(add_frame, text="Добавить", command=self.add_task)
-        btn_add.pack(side=tk.LEFT, padx=5)
-
-    def generate_task(self):
-        if not self.tasks:
-            messagebox.showwarning("Нет задач", "Список задач пуст. Добавьте новые задачи.")
-            return
-        chosen = random.choice(self.tasks)
-        self.label_task.config(text=f"Текущая задача: {chosen['name']} (тип: {chosen['type']})")
-        self.history.append(f"{chosen['name']} ({chosen['type']})")
-        self.save_history()
-        self.update_history_list()
-
-    def update_history_list(self):
-        self.history_listbox.delete(0, tk.END)
-        filter_type = self.filter_var.get()
-        for item in self.history:
-            if filter_type == "все":
-                self.history_listbox.insert(tk.END, item)
-            elif f"({filter_type})" in item:
-                self.history_listbox.insert(tk.END, item)
-
-    def add_task(self):
-        new_name = self.new_task_entry.get().strip()
-        if not new_name:
-            messagebox.showerror("Ошибка", "Название задачи не может быть пустым!")
-            return
-        self.tasks.append({"name": new_name, "type": self.new_type_var.get()})
-        self.new_task_entry.delete(0, tk.END)
-        messagebox.showinfo("Успех", f"Задача '{new_name}' добавлена!")
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = RandomTaskGenerator(root)
-    root.mainloop()
+root.mainloop()
